@@ -1,39 +1,348 @@
-<script>
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbwtiXL8WWjkhQVOQm-ZHP6R_UZo-R7nuOqr3sS9s-wFOeyU7rrBbvP9a31Tn-6w6jng/exec"; // do Apps Script
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registrar Aula — Instituto ALFA</title>
+  <meta name="description" content="Registro rápido de aulas para controle mensal e conferência de pagamento no Instituto ALFA."/>
+  <style>
+    :root{
+      --bg:#f4f6f8;
+      --card:#fff;
+      --nav:#122c66;
+      --header:#0a1f44;
+      --text:#0b1220;
+      --muted:#475569;
+      --shadow:0 10px 22px rgba(2,6,23,.10);
+      --radius:14px;
+      --ok:#16a34a;
+      --err:#dc2626;
+      --warn:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: Arial, Helvetica, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      line-height:1.4;
+    }
 
-async function registrarAula(ev){
-  ev.preventDefault();
+    /* Header simples (mantém padrão clean) */
+    header{
+      background:linear-gradient(180deg, var(--header), var(--nav));
+      color:#fff;
+      padding:18px 14px;
+      box-shadow:var(--shadow);
+    }
+    .wrap{max-width:980px;margin:0 auto;padding:0 12px}
+    header h1{margin:0;font-size:18px}
+    header p{margin:6px 0 0;color:rgba(255,255,255,.85);font-size:13px}
 
-  const payload = {
-    data: document.querySelector("#data").value,          // ex: 2026-02-27
-    turma: document.querySelector("#turma").value,
-    disciplina: document.querySelector("#disciplina").value,
-    instituicao: "Instituto ALFA",
-    valor: 100,
-    obs: document.querySelector("#obs").value
-  };
+    main{padding:18px 0 28px}
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:14px;
+    }
+    @media (max-width: 860px){
+      .grid{grid-template-columns:1fr}
+    }
 
-  const btn = document.querySelector("#btnRegistrar");
-  btn.disabled = true;
-  btn.textContent = "Registrando...";
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:16px;
+    }
+    .card h2{
+      margin:0 0 10px;
+      font-size:16px;
+      color:var(--header);
+    }
+    .muted{color:var(--muted);font-size:13px}
 
-  try{
-    const res = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(payload)
-    });
-    const json = await res.json();
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width: 520px){
+      .row{grid-template-columns:1fr}
+    }
 
-    if(!json.ok) throw new Error(json.error || "Falha ao registrar.");
+    label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
+    input, textarea, select{
+      width:100%;
+      padding:12px 12px;
+      border:1px solid rgba(15,23,42,.15);
+      border-radius:12px;
+      outline:none;
+      font-size:14px;
+      background:#fff;
+      color:var(--text);
+    }
+    textarea{min-height:92px;resize:vertical}
+    input:focus, textarea:focus, select:focus{border-color:rgba(18,44,102,.55); box-shadow:0 0 0 3px rgba(18,44,102,.12)}
 
-    alert("✅ Aula registrada!");
-    document.querySelector("#obs").value = "";
-  }catch(e){
-    alert("❌ Erro: " + e.message);
-  }finally{
-    btn.disabled = false;
-    btn.textContent = "Registrar Aula";
-  }
-}
-</script>
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      background:rgba(18,44,102,.08);
+      color:var(--header);
+      font-weight:700;
+      font-size:13px;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+      align-items:center;
+    }
+    button{
+      border:0;
+      cursor:pointer;
+      padding:12px 14px;
+      border-radius:12px;
+      font-weight:700;
+      font-size:14px;
+      box-shadow:0 10px 18px rgba(2,6,23,.12);
+    }
+    .btn-primary{
+      background:var(--nav);
+      color:#fff;
+    }
+    .btn-secondary{
+      background:rgba(15,23,42,.08);
+      color:var(--text);
+      box-shadow:none;
+    }
+    button:disabled{
+      opacity:.7;
+      cursor:not-allowed;
+    }
+
+    .status{
+      margin-top:12px;
+      padding:10px 12px;
+      border-radius:12px;
+      display:none;
+      font-size:13px;
+      border:1px solid rgba(15,23,42,.10);
+    }
+    .status.ok{display:block;background:rgba(22,163,74,.10);color:var(--ok);border-color:rgba(22,163,74,.25)}
+    .status.err{display:block;background:rgba(220,38,38,.10);color:var(--err);border-color:rgba(220,38,38,.25)}
+    .status.warn{display:block;background:rgba(245,158,11,.12);color:#92400e;border-color:rgba(245,158,11,.25)}
+
+    .kpi{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+    .kpi .box{
+      padding:12px;
+      border-radius:14px;
+      background:rgba(2,6,23,.03);
+      border:1px solid rgba(15,23,42,.08);
+    }
+    .kpi .big{font-size:18px;font-weight:800;color:var(--header)}
+    .kpi .small{font-size:12px;color:var(--muted)}
+
+    footer{
+      padding:18px 0 24px;
+      color:var(--muted);
+      font-size:12px;
+      text-align:center;
+    }
+    .hint{margin-top:10px;padding:12px;border-radius:14px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25)}
+    .hint strong{color:#92400e}
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Registrar Aula — Instituto ALFA</h1>
+      <p>Registro rápido para conferência mensal do seu pagamento (R$ 100,00 por aula).</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div class="grid">
+
+        <!-- Form -->
+        <section class="card">
+          <h2>Registro da aula</h2>
+          <p class="muted">Preencha e toque em <strong>Registrar Aula</strong>. A página não recarrega e você já recebe a confirmação.</p>
+
+          <form onsubmit="registrarAula(event)">
+            <div class="row">
+              <div>
+                <label for="data">Data</label>
+                <input type="date" id="data" required />
+              </div>
+              <div>
+                <label for="valor">Valor por aula</label>
+                <input type="text" id="valor" value="R$ 100,00" disabled />
+              </div>
+            </div>
+
+            <label for="turma">Turma</label>
+            <input type="text" id="turma" placeholder="Ex.: Informática / ADM - Turma B" required />
+
+            <label for="disciplina">Disciplina / Tema</label>
+            <input type="text" id="disciplina" placeholder="Ex.: Excel - Funções básicas / Word - Formatação" required />
+
+            <label for="obs">Observações (opcional)</label>
+            <textarea id="obs" placeholder="Ex.: Aula extra / reposição / laboratório / alunos faltaram..."></textarea>
+
+            <div class="actions">
+              <button class="btn-primary" id="btnRegistrar" type="submit">Registrar Aula</button>
+              <button class="btn-secondary" type="button" onclick="limparCampos()">Limpar</button>
+              <span class="pill" title="Instituição fixa">🏫 Instituto ALFA</span>
+            </div>
+
+            <div id="statusBox" class="status"></div>
+          </form>
+        </section>
+
+        <!-- Ajuda / Info -->
+        <aside class="card">
+          <h2>Resumo do que será salvo</h2>
+          <p class="muted">Cada registro envia para sua planilha:</p>
+
+          <div class="kpi">
+            <div class="box">
+              <div class="big">Data</div>
+              <div class="small">Data selecionada no formulário</div>
+            </div>
+            <div class="box">
+              <div class="big">R$ 100</div>
+              <div class="small">Valor fixo por aula</div>
+            </div>
+            <div class="box">
+              <div class="big">Turma</div>
+              <div class="small">Identificação da turma</div>
+            </div>
+            <div class="box">
+              <div class="big">Disciplina</div>
+              <div class="small">Tema / conteúdo</div>
+            </div>
+          </div>
+
+          <div class="hint">
+            <strong>Dica:</strong> terminou a aula, registra na hora. Isso aqui é o seu “contracheque” pessoal do mês.
+          </div>
+
+          <p class="muted" style="margin-top:12px">
+            Se quiser, depois a gente cria um botão “Ver total do mês” direto nessa página puxando do Google Sheets.
+          </p>
+        </aside>
+
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    Controle de aulas — Mickael • Instituto ALFA • Registro rápido para evitar erros de pagamento.
+  </footer>
+
+  <script>
+    // ✅ Seu Web App (já configurado)
+    const ENDPOINT = "https://script.google.com/macros/s/AKfycbwtiXL8WWjkhQVOQm-ZHP6R_UZo-R7nuOqr3sS9s-wFOeyU7rrBbvP9a31Tn-6w6jng/exec";
+
+    // Preenche data de hoje automaticamente (timezone do navegador)
+    (function setHoje(){
+      const el = document.getElementById("data");
+      if(!el) return;
+      const hoje = new Date();
+      const yyyy = hoje.getFullYear();
+      const mm = String(hoje.getMonth()+1).padStart(2,'0');
+      const dd = String(hoje.getDate()).padStart(2,'0');
+      el.value = `${yyyy}-${mm}-${dd}`;
+    })();
+
+    function setStatus(type, msg){
+      const box = document.getElementById("statusBox");
+      box.className = "status " + (type || "");
+      box.textContent = msg || "";
+      box.style.display = msg ? "block" : "none";
+    }
+
+    function limparCampos(){
+      document.getElementById("turma").value = "";
+      document.getElementById("disciplina").value = "";
+      document.getElementById("obs").value = "";
+      setStatus("", "");
+      document.getElementById("turma").focus();
+    }
+
+    async function registrarAula(ev){
+      ev.preventDefault();
+      setStatus("", "");
+
+      const data = document.querySelector("#data").value;
+      const turma = document.querySelector("#turma").value.trim();
+      const disciplina = document.querySelector("#disciplina").value.trim();
+      const obs = document.querySelector("#obs").value.trim();
+
+      if(!turma || !disciplina){
+        setStatus("warn", "Preencha pelo menos Turma e Disciplina.");
+        return;
+      }
+
+      const payload = {
+        data,
+        turma,
+        disciplina,
+        instituicao: "Instituto ALFA",
+        valor: 100,
+        obs
+      };
+
+      const btn = document.querySelector("#btnRegistrar");
+      btn.disabled = true;
+      const oldText = btn.textContent;
+      btn.textContent = "Registrando...";
+
+      try{
+        const res = await fetch(ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        // Em alguns cenários, o Apps Script pode responder texto; tentamos JSON de forma segura
+        let json;
+        const text = await res.text();
+        try { json = JSON.parse(text); } catch { json = { ok:false, error:text || "Resposta inválida do servidor." }; }
+
+        if(!res.ok || !json.ok){
+          throw new Error(json.error || "Falha ao registrar. Verifique a implantação do Web App.");
+        }
+
+        setStatus("ok", "✅ Aula registrada com sucesso na planilha!");
+        alert("✅ Aula registrada!");
+        // Mantém data, limpa o resto
+        document.getElementById("turma").value = "";
+        document.getElementById("disciplina").value = "";
+        document.getElementById("obs").value = "";
+        document.getElementById("turma").focus();
+      }catch(e){
+        setStatus("err", "❌ Erro: " + e.message);
+        alert("❌ Erro: " + e.message);
+      }finally{
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,1 +1,39 @@
+<script>
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbwtiXL8WWjkhQVOQm-ZHP6R_UZo-R7nuOqr3sS9s-wFOeyU7rrBbvP9a31Tn-6w6jng/exec"; // do Apps Script
 
+async function registrarAula(ev){
+  ev.preventDefault();
+
+  const payload = {
+    data: document.querySelector("#data").value,          // ex: 2026-02-27
+    turma: document.querySelector("#turma").value,
+    disciplina: document.querySelector("#disciplina").value,
+    instituicao: "Instituto ALFA",
+    valor: 100,
+    obs: document.querySelector("#obs").value
+  };
+
+  const btn = document.querySelector("#btnRegistrar");
+  btn.disabled = true;
+  btn.textContent = "Registrando...";
+
+  try{
+    const res = await fetch(ENDPOINT, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+
+    if(!json.ok) throw new Error(json.error || "Falha ao registrar.");
+
+    alert("✅ Aula registrada!");
+    document.querySelector("#obs").value = "";
+  }catch(e){
+    alert("❌ Erro: " + e.message);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "Registrar Aula";
+  }
+}
+</script>
